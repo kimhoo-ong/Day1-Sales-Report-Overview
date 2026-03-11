@@ -1,0 +1,20 @@
+relationship day01_sales_performance_ProductKey_Dim_Product_ProductKey
+	fromColumn: Fact_Sales.ProductKey
+	toColumn: Dim_Product.ProductKey
+
+relationship day01_sales_performance_order_date_Date_Date
+	fromColumn: Fact_Sales.'Order Date'
+	toColumn: Date.Date
+
+relationship day01_sales_performance_region_Dim_Region_Region
+	fromColumn: Fact_Sales.Region
+	toColumn: Dim_Region.Region
+
+relationship 'day01_sales_performance_sales_rep_Dim_SalesRep_Sales Rep'
+	fromColumn: Fact_Sales.'Sales Rep'
+	toColumn: Dim_SalesRep.'Sales Rep'
+
+relationship 'day01_sales_performance_discount_pct_Dim_Discount_Discount Pct'
+	fromColumn: Fact_Sales.'Discount Pct'
+	toColumn: Dim_Discount.'Discount Pct'
+

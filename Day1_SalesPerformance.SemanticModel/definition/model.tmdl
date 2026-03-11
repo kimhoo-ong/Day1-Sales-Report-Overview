@@ -1,0 +1,24 @@
+model Model
+	culture: en-MY
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-MY
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["Sales","DimDate","DimProduct","DimRegion","DimSalesRep","day01_sales_performance"]
+
+annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
+
+ref table Fact_Sales
+ref table Date
+ref table Dim_Product
+ref table Dim_Region
+ref table Dim_SalesRep
+ref table Dim_Discount
+ref table Funnel_Sales
+
+ref cultureInfo en-MY
+

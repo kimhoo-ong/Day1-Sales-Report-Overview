@@ -1,0 +1,19 @@
+/// DIMENSION TABLE — Geographic region lookup. Contains the 5 sales regions: North, South, East, West, Central. Use [Region] in slicers, map visuals, and bar charts for geographic breakdowns. Linked to the fact table via the region column. North leads in revenue; Central trails by 14.4% — a key business insight to surface.
+table Dim_Region
+	lineageTag: c12430f5-50e8-4cff-8e09-0d49cd0f07e8
+
+	column Region
+		lineageTag: 5c84dfe1-d7cc-4540-9a6a-8914d860bdf6
+		isNameInferred
+		sourceColumn: [Region]
+
+	partition Dim_Region = calculated
+		mode: import
+		source =
+				DISTINCT(
+				    SELECTCOLUMNS(
+				        Fact_Sales,
+				        "Region", [Region]
+				    )
+				)
+

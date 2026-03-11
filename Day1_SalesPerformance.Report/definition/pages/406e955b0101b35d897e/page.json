@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.0.0/schema.json",
+  "name": "406e955b0101b35d897e",
+  "displayName": "Category & Product Sales",
+  "displayOption": "FitToPage",
+  "height": 920,
+  "width": 1280
+}

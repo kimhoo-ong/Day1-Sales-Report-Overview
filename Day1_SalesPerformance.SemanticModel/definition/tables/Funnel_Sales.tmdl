@@ -1,0 +1,42 @@
+table Funnel_Sales
+	lineageTag: 4e35df04-16f3-4977-8759-cb5be60a2bfe
+
+	column Stage
+		lineageTag: 5984f4bb-6ca2-4a9a-b1e2-3ba92be84083
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Stage]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sort
+		formatString: 0
+		lineageTag: c7c4551c-3742-4a33-ba8b-cd0d6c466d4b
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Sort]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Value
+		lineageTag: 0ba36c8b-43a8-47e3-9bd0-d78525df5088
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Value]
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition Funnel_Sales = calculated
+		mode: import
+		source =
+				
+				UNION(
+				    ROW("Stage", "Total Sales",      "Sort", 1, "Value", [Total Revenue]),
+				    ROW("Stage", "Sales Hit Target", "Sort", 2, "Value", [Revenue Hit Target]),
+				    ROW("Stage", "Profitable Sales", "Sort", 3, "Value", [Profitable Revenue])
+				)
+
+	annotation PBI_Id = b6bc28fc8b794ff18881e7d6c9ba7b07
+

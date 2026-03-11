@@ -1,0 +1,31 @@
+/// DIMENSION TABLE — Product catalogue lookup. Contains one unique row per product+category combination. Use [Product Name] and [Category] columns in visuals, slicers, and chart axes. Linked to the fact table via ProductKey. Enables filtering all fact measures by product or category without duplicating data in the fact table.
+table Dim_Product
+	lineageTag: 933ee3d7-9dd5-4378-853a-e79a9125187b
+
+	column ProductKey
+		lineageTag: a279d17c-6fcb-412c-aad5-48e155fb018d
+		isNameInferred
+		sourceColumn: [ProductKey]
+
+	column 'Product Name'
+		lineageTag: cec3fb08-6b8e-4542-9bc7-dde5cd540861
+		isNameInferred
+		sourceColumn: [Product Name]
+
+	column Category
+		lineageTag: a877999b-e574-4628-8b91-e0b1548f3eea
+		isNameInferred
+		sourceColumn: [Category]
+
+	partition Dim_Product = calculated
+		mode: import
+		source =
+				DISTINCT(
+				    SELECTCOLUMNS(
+				        Fact_Sales,
+				        "ProductKey", [Product Name] & "|" & [Category],
+				        "Product Name", [Product Name],
+				        "Category", [Category]
+				    )
+				)
+

@@ -1,0 +1,36 @@
+/// DIMENSION TABLE — Discount tier reference table. Contains 5 discount levels (0%, 5%, 10%, 15%, 20%) with human-readable labels and banding (No Discount / Low / High). Use [Discount Label] in chart axes and [Discount Band] for grouped analysis. Key insight: each 5% discount increment reduces margin by ~2.5pp. Use in discount impact analysis to drive the recommendation to cap discounts at 15%.
+table Dim_Discount
+	lineageTag: 02aaa28d-e0ab-4c88-b8c7-8166ba759883
+
+	column 'Discount Pct'
+		isHidden
+		lineageTag: 7595ab15-7378-4c13-a64e-105c6efbb3d3
+		isNameInferred
+		sourceColumn: [Discount Pct]
+
+	column 'Discount Label'
+		lineageTag: 0c19c431-00bf-49a3-979a-3829a4cf95d8
+		isNameInferred
+		sourceColumn: [Discount Label]
+
+	column 'Discount Band'
+		lineageTag: 18409fcf-e2b7-491f-b9f8-0239c6b1b591
+		isNameInferred
+		sourceColumn: [Discount Band]
+
+	partition Dim_Discount = calculated
+		mode: import
+		source =
+				DATATABLE(
+				    "Discount Pct", INTEGER,
+				    "Discount Label", STRING,
+				    "Discount Band", STRING,
+				    {
+				        {0,  "0% (No Discount)",   "No Discount"},
+				        {5,  "5% Discount",        "Low Discount"},
+				        {10, "10% Discount",       "Low Discount"},
+				        {15, "15% Discount",       "High Discount"},
+				        {20, "20% Discount",       "High Discount"}
+				    }
+				)
+

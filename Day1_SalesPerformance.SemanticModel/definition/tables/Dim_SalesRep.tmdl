@@ -1,0 +1,19 @@
+/// DIMENSION TABLE — Sales representative lookup. Contains all 20 unique sales reps. Use [Sales Rep] in leaderboards, attainment tables, and rep-level slicers. Linked to the fact table via sales_rep. Enables rep-level performance tracking including target attainment %, margin contribution, and deal volume.
+table Dim_SalesRep
+	lineageTag: cdbc7234-2136-477e-ad16-9853cbc8a251
+
+	column 'Sales Rep'
+		lineageTag: a7a990d0-79f3-4c45-a770-59e7ba6d4da6
+		isNameInferred
+		sourceColumn: [Sales Rep]
+
+	partition Dim_SalesRep = calculated
+		mode: import
+		source =
+				DISTINCT(
+				    SELECTCOLUMNS(
+				        Fact_Sales,
+				        "Sales Rep", [Sales Rep]
+				    )
+				)
+

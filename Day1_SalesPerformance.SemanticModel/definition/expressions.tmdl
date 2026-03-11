@@ -1,0 +1,40 @@
+/// Fact table: loads day01_sales_performance.csv. Contains all 2,000 order-level transaction records with time, product, rep, region, and financial data.
+expression Sales =
+		let
+		    Source = Csv.Document(File.Contents("C:\Users\KimHoo\Downloads\30_Dashboard_Datasets\sales\day01_sales_performance.csv"),[Delimiter=",", Columns=13, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+		    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+		    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{
+		        {"order_id", type text},
+		        {"order_date", type date},
+		        {"product_name", type text},
+		        {"category", type text},
+		        {"region", type text},
+		        {"sales_rep", type text},
+		        {"quantity", Int64.Type},
+		        {"unit_price", type number},
+		        {"discount_pct", Int64.Type},
+		        {"cost_price", type number},
+		        {"revenue", type number},
+		        {"profit", type number},
+		        {"target_revenue", type number}
+		    })
+		in
+		    #"Changed Type"
+	lineageTag: 02dcf7d4-fd2a-43fd-b36b-6dd1a963c315
+
+/// Date dimension table helper expression
+expression DimDate = let dummy = 1 in dummy
+	lineageTag: 7f0913cd-0156-46a3-bcce-2d53316ab9d3
+
+/// Product dimension helper expression
+expression DimProduct = let dummy = 1 in dummy
+	lineageTag: fb350843-7dc1-4ce4-aa76-2701b5103db3
+
+/// Region dimension helper expression
+expression DimRegion = let dummy = 1 in dummy
+	lineageTag: 26fe59f2-c8b9-4c0b-991c-70938106b1b5
+
+/// SalesRep dimension helper expression
+expression DimSalesRep = let dummy = 1 in dummy
+	lineageTag: 74596478-6266-4373-8f16-74595606b19c
+

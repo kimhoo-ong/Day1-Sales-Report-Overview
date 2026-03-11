@@ -1,0 +1,295 @@
+/// FACT TABLE — Core transaction-level sales data. One row = one order line. Contains all raw measures (revenue, profit, cost) and foreign keys linking to dimension tables. This is the central table of the star schema — all DAX measures are calculated from here. Do NOT use columns like product_name, region, sales_rep directly in visuals; use the corresponding Dim_ tables instead for proper filtering and slicing.
+table Fact_Sales
+	lineageTag: 5443636a-8137-4108-bb48-89c091218e17
+
+	/// WHAT: Sum of all revenue across selected filters.
+	/// LOGIC: SUM(revenue) where revenue = unit_price x quantity x (1 - discount_pct/100). Already pre-calculated in the source data.
+	/// USE IN: KPI card (primary), Monthly Revenue vs Target combo chart (bar), Revenue by Region horizontal bar, Sales Rep leaderboard. This is the #1 commercial KPI — place top-left on every dashboard page.
+	/// RAG TARGET: Green >95% of MYR 14M, Amber 85-95%, Red <85%.
+	measure 'Total Revenue' = SUM(Fact_Sales[Revenue])
+		formatString: #,##0.00
+		displayFolder: Financial KPIs
+		lineageTag: c3bb9519-183b-4e0b-a20e-8f0637364a78
+
+	/// WHAT: Sum of all profit across selected filters.
+	/// LOGIC: SUM(profit) where profit = revenue - (cost_price x quantity). Can be negative — 28.9% of orders are loss-making, which is a critical business signal.
+	/// USE IN: KPI card (secondary), Category Revenue & Margin clustered bar, Sales Rep leaderboard. Pair with [Gross Margin %] to distinguish volume vs efficiency.
+	/// RAG TARGET: Green >40% margin, Amber 35-40%, Red <35%.
+	measure 'Total Profit' = SUM(Fact_Sales[Profit])
+		formatString: #,##0.00
+		displayFolder: Financial KPIs
+		lineageTag: e8ebf986-af2a-4b10-9853-da5c193f4cd9
+
+	/// WHAT: Overall profitability as a percentage of revenue.
+	/// LOGIC: DIVIDE(Total Profit, Total Revenue). Returns 0 if revenue is zero (safe divide). Expressed as a decimal — format as percentage in visuals.
+	/// USE IN: KPI card, Category breakdown bar (dual axis), Product treemap color encoding. A 40%+ margin is the benchmark. Accessories lead at 43.3%; Furniture trails at 37.6%.
+	/// RAG TARGET: Green >40%, Amber 35-40%, Red <35%.
+	/// NOTE: Blended 2024 actual = 40.7%.
+	measure 'Gross Margin %' = DIVIDE([Total Profit], [Total Revenue], 0)
+		formatString: 0.00%
+		displayFolder: Financial KPIs
+		lineageTag: e78a7047-b902-436c-b305-25c73563b398
+
+	/// WHAT: The share of orders where actual revenue met or exceeded the order-level target revenue.
+	/// LOGIC: Count orders where attainment_flag = 1 (revenue >= target_revenue), divided by total order count.
+	/// USE IN: Gauge chart (primary use), Sales Rep leaderboard column, KPI card. Currently only 38.9% — a critical underperformance signal. Do NOT confuse with [Revenue vs Target] which compares total revenue sums.
+	/// RAG TARGET: Green >90%, Amber 70-90%, Red <70%.
+	/// WARNING: Only 777 of 2,000 orders hit target in 2024.
+	measure 'Target Attainment %' = DIVIDE(CALCULATE(COUNTROWS(Fact_Sales), Fact_Sales[Attainment Flag] = 1), COUNTROWS(Fact_Sales), 0)
+		formatString: 0.00%
+		displayFolder: Performance KPIs
+		lineageTag: baea5495-a3d3-42e3-a4dd-922a05b85bf3
+
+	/// WHAT: The proportion of orders that are unprofitable (profit < 0).
+	/// LOGIC: Count orders where profit < 0, divided by total order count.
+	/// USE IN: KPI card (risk indicator), Loss-Making Orders stacked bar by category. This is a hidden value destruction alert — 28.9% of orders (579) destroy value totalling MYR -1.6M.
+	/// RAG TARGET: Green <10%, Amber 10-25%, Red >25%.
+	/// ACTION: Use this measure to trigger an alert email when the rate exceeds 25%.
+	measure 'Loss Order %' = DIVIDE(CALCULATE(COUNTROWS(Fact_Sales), Fact_Sales[Profit] < 0), COUNTROWS(Fact_Sales), 0)
+		formatString: 0.00%
+		displayFolder: Performance KPIs
+		lineageTag: ff4ac46e-b82f-46f2-8ad7-67c2804ffb6e
+
+	/// WHAT: Average revenue generated per individual order.
+	/// LOGIC: DIVIDE(Total Revenue, COUNTROWS(fact table)). Reflects deal quality and B2B nature of the business.
+	/// USE IN: KPI card with MoM trend arrow, Sales Rep leaderboard (deal quality column). 2024 baseline = MYR 6,988. Use alongside Total Orders to distinguish between volume growth vs deal-size growth.
+	/// TARGET: MYR 7,000 benchmark. A falling AOV with rising order count may indicate discount abuse.
+	measure 'Avg Order Value' = DIVIDE([Total Revenue], COUNTROWS(Fact_Sales), 0)
+		formatString: #,##0.00
+		displayFolder: Financial KPIs
+		lineageTag: b9401df8-0103-4799-bcdb-a06df3b7cc0b
+
+	/// WHAT: Month-over-month revenue growth rate as a percentage.
+	/// LOGIC: Compares current period [Total Revenue] to the same measure one month prior using DATEADD on the Date table. Returns 0 if prior month has no data.
+	/// USE IN: KPI card trend arrow, sparkline on the Monthly Revenue card. Requires the Date table relationship to be active — will return blank if the Date slicer is set to a single day.
+	/// IMPORTANT: This measure is context-sensitive. It works correctly when filtered to a month or month range. Avoid using in matrix rows without a date dimension on the axis.
+	measure 'MoM Revenue Growth' =
+			VAR currentRevenue = [Total Revenue]
+			VAR lastMonthRevenue = CALCULATE([Total Revenue], DATEADD('Date'[Date], -1, MONTH))
+			RETURN DIVIDE(currentRevenue - lastMonthRevenue, lastMonthRevenue, 0)
+		formatString: 0.00%
+		displayFolder: Performance KPIs
+		lineageTag: fbda5ef1-01a2-4b7c-9482-416af5cb8945
+
+	/// WHAT: Total actual revenue as a percentage of total target revenue.
+	/// LOGIC: DIVIDE(Total Revenue, SUM(target_revenue)). Compares the aggregate revenue sum to the aggregate target sum — a different view from [Target Attainment %] which counts order-level hits.
+	/// USE IN: Attainment gauge chart, KPI card. 2024 result = 95.4% — revenue is close to total target, but only 38.9% of individual orders hit their target. Show BOTH measures on the dashboard to reveal this nuance.
+	/// RAG TARGET: Green >95%, Amber 85-95%, Red <85%.
+	measure 'Revenue vs Target' = DIVIDE([Total Revenue], SUM(Fact_Sales[Target Revenue]), 0)
+		formatString: 0.00%
+		displayFolder: Performance KPIs
+		lineageTag: 52b627b3-d884-4f8a-b30f-3365a3a5cdf0
+
+	/// WHAT: Total revenue from orders that met or exceeded their target.
+	/// LOGIC: Filters to rows where Attainment Flag = 1, then sums Revenue.
+	/// USE IN: Funnel chart (Stage 2 of 3). Pair with [Total Revenue] as Stage 1 and [Profitable Revenue] as Stage 3.
+	measure 'Revenue Hit Target' = CALCULATE(SUM(Fact_Sales[Revenue]), Fact_Sales[Attainment Flag] = 1)
+		formatString: #,##0.00
+		displayFolder: Financial KPIs
+		lineageTag: 1031bf04-008d-4d10-a828-5a0f292c59b4
+
+	/// WHAT: Total revenue from orders that generated a positive profit.
+	/// LOGIC: Filters to rows where Profit > 0, then sums Revenue.
+	/// USE IN: Funnel chart (Stage 3 of 3). Pair with [Total Revenue] as Stage 1 and [Revenue Hit Target] as Stage 2.
+	measure 'Profitable Revenue' = CALCULATE(SUM(Fact_Sales[Revenue]), Fact_Sales[Profit] > 0)
+		formatString: #,##0.00
+		displayFolder: Financial KPIs
+		lineageTag: 09475ee4-9ff7-4ea6-a908-91060a6c86c2
+
+	column 'Order ID'
+		dataType: string
+		lineageTag: 2febe4dd-3123-453a-b5bf-5a476ccb7ec5
+		summarizeBy: none
+		sourceColumn: order_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Order Date'
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 43200efd-06f5-44d7-8a85-cf9490f58baa
+		summarizeBy: none
+		sourceColumn: order_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Product Name'
+		dataType: string
+		lineageTag: f0019f3a-8206-4f12-9f38-e50c3f405ee1
+		summarizeBy: none
+		sourceColumn: product_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column Category
+		dataType: string
+		lineageTag: f406ede6-922f-4e73-a74d-d3b3b5586321
+		summarizeBy: none
+		sourceColumn: category
+
+		annotation SummarizationSetBy = Automatic
+
+	column Region
+		dataType: string
+		isHidden
+		lineageTag: b71dd18b-c524-475c-85a0-b7aecbb0f0c1
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Sales Rep'
+		dataType: string
+		isHidden
+		lineageTag: 942dd6dd-22b7-4204-ba60-a901b51ffe78
+		summarizeBy: none
+		sourceColumn: sales_rep
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quantity
+		dataType: int64
+		formatString: 0
+		lineageTag: 0aea0226-3255-4fe6-8215-0537814c5a2c
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Unit Price'
+		dataType: double
+		lineageTag: 3ca05936-e29a-4168-a85b-ed5d7a155f5f
+		summarizeBy: sum
+		sourceColumn: unit_price
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'Discount Pct'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 50a3cfc7-c169-4efe-9149-b0144fe1bce9
+		summarizeBy: sum
+		sourceColumn: discount_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Cost Price'
+		dataType: double
+		lineageTag: 02df3428-9e79-4434-bfee-f5f1f01847bc
+		summarizeBy: sum
+		sourceColumn: cost_price
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Revenue
+		dataType: double
+		lineageTag: 33b17ffb-a849-4b96-bf84-f2239d023e1e
+		summarizeBy: sum
+		sourceColumn: revenue
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Profit
+		dataType: double
+		lineageTag: 149fbd5c-3924-4b46-9c83-8bdfe1d17eef
+		summarizeBy: sum
+		sourceColumn: profit
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'Target Revenue'
+		dataType: double
+		lineageTag: 3b1b0057-100b-4e19-a732-4b22e1cc24a6
+		summarizeBy: sum
+		sourceColumn: target_revenue
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	/// WHAT: Labels each order as 'Profitable' or 'Loss'.
+	/// LOGIC: IF(profit >= 0, 'Profitable', 'Loss'). Derived from the profit column.
+	/// USE IN: Conditional formatting on tables (green/red), Loss-Making Orders stacked bar chart (split axis), slicer to isolate loss orders. 28.9% of rows = 'Loss' — a critical business signal to surface.
+	column 'Profit Flag' = IF([Profit] >= 0, "Profitable", "Loss")
+		dataType: string
+		displayFolder: Calculated Columns
+		lineageTag: 281107ba-99bd-4590-84aa-4b7952257f46
+		summarizeBy: none
+
+	/// WHAT: Gross margin percentage at the individual order line level.
+	/// LOGIC: DIVIDE(profit, revenue, 0) * 100. Returns 0 if revenue is zero. Expressed as a number (e.g. 40.7), not a decimal.
+	/// USE IN: Conditional formatting on Sales Rep and Product tables, Product treemap color scale, Category bar chart. Use the [Gross Margin %] measure (not this column) in KPI cards and aggregated visuals — this column is for row-level context.
+	column 'Margin Pct' = DIVIDE([Profit], [Revenue], 0) * 100
+		dataType: double
+		formatString: 0.00
+		displayFolder: Calculated Columns
+		lineageTag: 9e52db90-67e9-47b6-82f3-d6d943d1a6cd
+		summarizeBy: average
+
+	/// WHAT: Binary flag (1/0) indicating whether an order hit its revenue target.
+	/// LOGIC: IF(revenue >= target_revenue, 1, 0). Used as the numerator in [Target Attainment %] measure.
+	/// USE IN: Not for direct display — used internally by the [Target Attainment %] measure. Can be used in CALCULATE filters for custom attainment slices. Only 38.9% of rows = 1.
+	column 'Attainment Flag' = IF([Revenue] >= [Target Revenue], 1, 0)
+		dataType: int64
+		displayFolder: Calculated Columns
+		lineageTag: 7c636f7a-d99c-4622-b594-fb28cc9ab5a4
+		summarizeBy: sum
+
+	/// WHAT: Human-readable month label for each order.
+	/// LOGIC: FORMAT(order_date, 'MMM YYYY') e.g. 'Jan 2024', 'Feb 2024'.
+	/// USE IN: Time-series chart X-axis when you need a text label (not a date hierarchy). NOTE: This is a text column — it will sort alphabetically unless you set sort-by to the Month Number column from the Date table. Prefer using Date[Year-Month] from the Date dimension for proper chronological sorting.
+	column 'Month Year' = FORMAT([Order Date], "MMM YYYY")
+		dataType: string
+		displayFolder: Calculated Columns
+		lineageTag: 86aac125-270f-4497-9f45-f5ac6114c138
+		summarizeBy: none
+
+	/// WHAT: Quarter label for each order.
+	/// LOGIC: 'Q' & QUARTER(order_date) — returns 'Q1', 'Q2', 'Q3', 'Q4'.
+	/// USE IN: Quarterly slicer, quarterly bar chart grouping. Q4 is the strongest quarter (MYR 3.61M); Q3 is the weakest (MYR 3.36M). Prefer Date[Quarter] from the Date dimension table for cross-table consistency.
+	column Quarter = "Q" & QUARTER([Order Date])
+		dataType: string
+		displayFolder: Calculated Columns
+		lineageTag: a20e957b-23f3-497a-8c49-ef01dc507de0
+		summarizeBy: none
+
+	/// WHAT: Classifies each order into a deal size tier.
+	/// LOGIC: SWITCH(TRUE(), revenue < 2000, 'Small', revenue <= 10000, 'Mid', 'Large').
+	/// USE IN: Deal size distribution bar chart, slicer for filtering by deal tier, Sales Rep analysis to understand rep deal-size mix. Useful for identifying reps who rely on small-deal volume vs those who close large strategic deals.
+	column 'Deal Size Band' = SWITCH(TRUE(), [Revenue] < 2000, "Small", [Revenue] <= 10000, "Mid", "Large")
+		dataType: string
+		displayFolder: Calculated Columns
+		lineageTag: 5bfd5405-2468-4d44-b3eb-037f5696cc93
+		summarizeBy: none
+
+	column ProductKey = [Product Name] & "|" & [Category]
+		dataType: string
+		isHidden
+		displayFolder: Keys
+		lineageTag: cf8d5ace-db0d-473b-bb88-7c352fd8c400
+		summarizeBy: none
+
+	partition day01_sales_performance = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\KimHoo\Downloads\30_Dashboard_Datasets\sales\day01_sales_performance.csv"),[Delimiter=",", Columns=13, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"order_id", type text}, {"order_date", type date}, {"product_name", type text}, {"category", type text}, {"region", type text}, {"sales_rep", type text}, {"quantity", Int64.Type}, {"unit_price", type number}, {"discount_pct", Int64.Type}, {"cost_price", type number}, {"revenue", type number}, {"profit", type number}, {"target_revenue", type number}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table
+

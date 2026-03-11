@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.0.0/schema.json",
+  "name": "05dcad6a2c91b4410ca8",
+  "displayName": "Sales Rep Leaderboard",
+  "displayOption": "FitToPage",
+  "height": 920,
+  "width": 1280
+}

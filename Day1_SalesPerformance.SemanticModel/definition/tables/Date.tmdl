@@ -1,0 +1,120 @@
+/// DATE DIMENSION TABLE — Marked as official Power BI date table. Spans 2020-01-01 to 2030-12-31. Use Date[Date] to relate to fact tables. Use Date[Year], Date[Month], Date[Quarter] columns in all time-series visuals and slicers. Required for ALL DAX time-intelligence functions (DATEADD, SAMEPERIODLASTYEAR, DATESYTD, etc.) to work correctly. Never use the raw order_date column from the fact table in visuals — always use this table.
+table Date
+	lineageTag: e11a762d-8f6e-46fa-9995-888ba1db76b3
+	dataCategory: Time
+
+	column Date
+		isHidden
+		isUnique
+		lineageTag: 14a814dc-15a7-403d-9dce-b4d770b5693e
+		isNameInferred
+		sourceColumn: [Date]
+
+	column Year
+		lineageTag: 09a737c3-aebc-45f4-a30d-bad15a2bfdc8
+		isNameInferred
+		sourceColumn: [Year]
+
+	column 'Quarter Number'
+		lineageTag: 007eb38e-086f-406a-b2b3-5bd25da8f488
+		isNameInferred
+		sourceColumn: [Quarter Number]
+
+	column Quarter
+		lineageTag: 9ae60a79-97f9-4300-819f-defe38be1982
+		isNameInferred
+		sourceColumn: [Quarter]
+
+	column Year-Quarter
+		lineageTag: c1563d41-16e4-4864-90bb-36da0b08f767
+		isNameInferred
+		sourceColumn: [Year-Quarter]
+
+	column 'Month Number'
+		lineageTag: 21a45e01-506f-4f12-92fb-9bae1b01e847
+		isNameInferred
+		sourceColumn: [Month Number]
+
+	column Month
+		lineageTag: 9b36562d-f9e8-4741-bf5a-d4822f408f8b
+		isNameInferred
+		sourceColumn: [Month]
+		sortByColumn: 'Month Number'
+
+	column 'Month Short'
+		lineageTag: cdafdb88-64a3-43db-acb5-47842a3f7024
+		isNameInferred
+		sourceColumn: [Month Short]
+
+	column Year-Month
+		lineageTag: 0e4e7556-16e0-49e8-bb56-7678d196592a
+		isNameInferred
+		sourceColumn: [Year-Month]
+
+	column 'Week Number'
+		lineageTag: 5c015b6f-42b6-42ad-a8d9-6c091a0d3159
+		isNameInferred
+		sourceColumn: [Week Number]
+
+	column 'Day of Week Number'
+		lineageTag: ce2e16a8-cf2b-410f-aa01-a5c9b82e6558
+		isNameInferred
+		sourceColumn: [Day of Week Number]
+
+	column 'Day of Week'
+		lineageTag: 902026cc-958b-4350-ae6d-ca63f2bb440b
+		isNameInferred
+		sourceColumn: [Day of Week]
+
+	column 'Day of Week Short'
+		lineageTag: 370489fc-9c62-427b-af9e-9058d84576c6
+		isNameInferred
+		sourceColumn: [Day of Week Short]
+
+	column 'Day of Month'
+		lineageTag: aba09d7e-0247-470d-bb7d-6dc47bc62669
+		isNameInferred
+		sourceColumn: [Day of Month]
+
+	column 'Day of Year'
+		lineageTag: 08cc44ff-38e2-4e34-8740-3a3175ad26fa
+		isNameInferred
+		sourceColumn: [Day of Year]
+
+	column 'Is Weekend'
+		lineageTag: 0656770f-169a-4a2f-8196-271de54efa12
+		isNameInferred
+		sourceColumn: [Is Weekend]
+
+	column 'Is Weekday'
+		lineageTag: dff9e78a-5caf-4963-bf10-c2794572602e
+		isNameInferred
+		sourceColumn: [Is Weekday]
+
+	partition Date = calculated
+		mode: import
+		source =
+				VAR StartDate = DATE(2020, 1, 1)
+				VAR EndDate = DATE(2030, 12, 31)
+				VAR DateTable =
+				    ADDCOLUMNS(
+				        CALENDAR(StartDate, EndDate),
+				        "Year", YEAR([Date]),
+				        "Quarter Number", INT(FORMAT([Date], "Q")),
+				        "Quarter", "Q" & INT(FORMAT([Date], "Q")),
+				        "Year-Quarter", FORMAT([Date], "YYYY") & "-Q" & INT(FORMAT([Date], "Q")),
+				        "Month Number", MONTH([Date]),
+				        "Month", FORMAT([Date], "MMMM"),
+				        "Month Short", FORMAT([Date], "MMM"),
+				        "Year-Month", FORMAT([Date], "YYYY-MM"),
+				        "Week Number", WEEKNUM([Date], 2),
+				        "Day of Week Number", WEEKDAY([Date], 2),
+				        "Day of Week", FORMAT([Date], "DDDD"),
+				        "Day of Week Short", FORMAT([Date], "DDD"),
+				        "Day of Month", DAY([Date]),
+				        "Day of Year", DATEDIFF(DATE(YEAR([Date]), 1, 1), [Date], DAY) + 1,
+				        "Is Weekend", IF(WEEKDAY([Date], 2) >= 6, TRUE, FALSE),
+				        "Is Weekday", IF(WEEKDAY([Date], 2) < 6, TRUE, FALSE)
+				    )
+				RETURN DateTable
+
